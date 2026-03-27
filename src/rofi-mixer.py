@@ -190,10 +190,9 @@ def list_sinks_sources():
             muted = line.split("Mute: ")
             if muted[1] == "yes":
                 last_mute_match = "(Muted)"
-                mute_icon = '\x1ficon\x1f<span color="white">ﱝ</span>'
+                mute_icon = '󰝟'
             else:
-                mute_icon = ""
-                last_mute_match = ""
+                mute_icon = "󰕾"
 
         elif volume_re.match(line):
             volumes = line.split("/")
@@ -211,12 +210,19 @@ def list_sinks_sources():
             else:
                 prefix = ""
                 suffix = ""
+
+            dev_icon = " "
+            if dev_type == "source":
+                dev_icon = ""
+            if dev_type == "sink":
+                dev_icon = "󰓃"
                 
             if len(last_device_match) < 40:
                 dev_title = last_device_match
             else:
                 dev_title = last_device_match[0:39] + "..."
-            UIString = UIString + f"{prefix}  {dev_title}\n {last_volume_match} {last_mute_match}{rofi_info}{mute_icon}{suffix}|".strip()
+            UIString = UIString + f"{prefix} {dev_icon} {dev_title}\n{mute_icon} {last_volume_match} {rofi_info}{suffix}|".strip()
+            #UIString = UIString + f"{prefix}  {dev_title}\n {last_volume_match} {last_mute_match}{rofi_info}{mute_icon}{suffix}|".strip()
 
 def list_applications():
     global UIString

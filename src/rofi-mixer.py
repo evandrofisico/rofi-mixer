@@ -29,16 +29,26 @@ dev_type = args.type
 if first_arg == "quit":
     quit()
 
+global UIString
+
+UIString = ""
+
 use_hot_keys = "\x00use-hot-keys\x1ftrue\n"
 keep_selection = "\x00keep-selection\x1ftrue\n"
 enable_markup = "\x00markup-rows\x1ftrue\n"
+delim = "\x00delim\x1f|\n"
 
 if dev_type == "app":
-    prompt = "\x00prompt\x1fApplications\n"
+    prompt = "\x00prompt\x1fApplicações"
 else:
-    prompt = f"\x00prompt\x1fSelect {'Speaker' if dev_type == 'sink' else 'Microphone'}\n"
+    prompt = f"\x00prompt\x1fSelecione {'Saídas' if dev_type == 'sink' else 'Microfone'}"
 
-print(f"{use_hot_keys}{prompt}{keep_selection}{enable_markup}")
+#print(f"{use_hot_keys}{prompt}{keep_selection}{enable_markup}")
+
+if first_arg == None:
+    UIString += f"{use_hot_keys}{prompt}\n{keep_selection}{enable_markup}{delim}"
+else:
+    UIString += f"\x00keep-selection\x1ftrue|{prompt}|"
 
 def get_device_from_desc(description):
     res = os.popen(
@@ -64,13 +74,12 @@ if ROFI_RETV == 1:
         desc = ROFI_INFO
         device = os.popen(f'pactl list sinks| grep -C2 "Description: {desc}"|grep Name|cut -d: -f2|xargs').read().strip()
         if ROFI_DATA:
-            app_name, sink_input = ROFI_DATA.split("||")
+            app_name, sink_input = ROFI_DATA.split("@@")
             os.system(f'pactl move-sink-input {sink_input} "{device}"')
         quit()
     elif dev_type == "app":
-        app_name, sink_input = ROFI_INFO.split("||")
-        print(f"\x00data\x1f{app_name}||{sink_input}")
-        print("\x00prompt\x1fSelect Output Sink for {}\n".format(app_name))
+        app_name, sink_input = ROFI_INFO.split("@@")
+        UIString = UIString + f"\x00data\x1f{app_name}@@{sink_input}" + "\x00prompt\x1fSelecione Saída para {}|".format(app_name)
         
         dev_type = "sink"
     else:
@@ -80,7 +89,7 @@ if ROFI_RETV == 1:
 
 if ROFI_RETV == 28:
     if dev_type == "app":
-        app_name, sink_input = ROFI_INFO.split("||")
+        app_name, sink_input = ROFI_INFO.split("@@")
         os.system(f"pactl set-sink-input-volume {sink_input} +{VOLUME_DELTA}%")
     else:
         desc = ROFI_INFO
@@ -89,7 +98,7 @@ if ROFI_RETV == 28:
 
 if ROFI_RETV == 27:
     if dev_type == "app":
-        app_name, sink_input = ROFI_INFO.split("||")
+        app_name, sink_input = ROFI_INFO.split("@@")
         os.system(f"pactl set-sink-input-volume {sink_input} -{VOLUME_DELTA}%")
     else:
         desc = ROFI_INFO
@@ -98,7 +107,7 @@ if ROFI_RETV == 27:
 
 if ROFI_RETV == 26:
     if dev_type == "app":
-        app_name, sink_input = ROFI_INFO.split("||")
+        app_name, sink_input = ROFI_INFO.split("@@")
         os.system(f"pactl set-sink-input-mute {sink_input} toggle")
     else:
         desc = ROFI_INFO
@@ -138,14 +147,25 @@ def create_volume_bar(volume_percent):
         overflowed_segments = 0
         filled_segments = int(round(min(100, volume_value) / 100 * bar_length))
 
-    filled = "▓"  
-    empty = "░"   
+    if volume_value == 0:
+        fblock = ""
+    else:
+        fblock = ""
+
+    if volume_value >=100:
+        lblock = ""
+    else:
+        lblock = ""
+
+    empty = ""
+    filled= ""
     
     bar = "<span foreground='red'>" + filled * overflowed_segments + "</span>" + filled * filled_segments + empty * (bar_length - filled_segments - overflowed_segments)
     
-    return f"[{bar}] {volume_value}%"
+    return f"{fblock}{bar}{lblock} {volume_value}%"
 
 def list_sinks_sources():
+    global UIString
     res = os.popen(f"pactl list {dev_type}s")
     lines = res.read()
     res = os.popen(f"pactl get-default-{dev_type}")
@@ -186,20 +206,20 @@ def list_sinks_sources():
             rofi_info = f"\x00info\x1f{last_device_match}"
             
             if def_device == get_device_from_desc(last_device_match):
-                prefix = "*"
+                prefix = ""
+                suffix = "\x1factive\x1ftrue"
             else:
                 prefix = ""
+                suffix = ""
                 
             if len(last_device_match) < 40:
                 dev_title = last_device_match
             else:
                 dev_title = last_device_match[0:39] + "..."
-                
-            print(
-                f"{prefix} {dev_title} {last_volume_match} {last_mute_match}{rofi_info}{mute_icon}".strip()
-            )
+            UIString = UIString + f"{prefix}  {dev_title}\n {last_volume_match} {last_mute_match}{rofi_info}{mute_icon}{suffix}|".strip()
 
 def list_applications():
+    global UIString
     res = os.popen("pactl list sink-inputs")
     lines = res.read()
     
@@ -221,7 +241,7 @@ def list_applications():
         sink_input_match = sink_input_re.match(line)
         if sink_input_match:
             if app_name and sink_input:
-                rofi_info = f"\x00info\x1f{app_name}||{sink_input}"
+                rofi_info = f"\x00info\x1f{app_name}@@{sink_input}"
                 
                 volume_bar = create_volume_bar(app_volume_percent)
                 
@@ -234,7 +254,7 @@ def list_applications():
                 if current_sink:
                     sink_display = build_app_sink_display(current_sink, sink_display)
 
-                print(f"{app_title}{sink_display} {volume_bar} {app_muted}{rofi_info}{mute_icon}".strip())
+                UIString = UIString + f"{app_title}{sink_display}\n{volume_bar} {app_muted}{rofi_info}{mute_icon}|".strip()
             
             sink_input = sink_input_match.group(1)
             app_name = ""
@@ -270,7 +290,7 @@ def list_applications():
             current_sink = sink_re.match(line).group(1)
     
     if app_name and sink_input:
-        rofi_info = f"\x00info\x1f{app_name}||{sink_input}"
+        rofi_info = f"\x00info\x1f{app_name}@@{sink_input}"
         
         volume_bar = create_volume_bar(app_volume_percent)
         
@@ -283,25 +303,53 @@ def list_applications():
         if current_sink:
             sink_display = build_app_sink_display(current_sink, sink_display)
 
-        print(f"{app_title}{sink_display} {volume_bar} {app_muted}{rofi_info}{mute_icon}".strip())
+        UIString = UIString + f"󰎇 {app_title}{sink_display}\n {volume_bar} {app_muted}{rofi_info}{mute_icon}|".strip()
 
 
 def build_app_sink_display(current_sink, sink_display):
     res = os.popen(f"pactl list sinks | grep -A3 'Sink #{current_sink}' | grep -e 'Description' | cut -d: -f2")
     sink_desc = res.read().strip()
     if sink_desc:
-        sink_display = f" → {sink_desc}"
-        if len(sink_display) > 25:
-            sink_display = f" → {sink_desc[:22]}..."
+        sink_display = f"\n󰓃 {sink_desc}"
+        if len(sink_display) > 40:
+            sink_display = f"\n󰓃 {sink_desc[:39]}..."
     return sink_display
 
+def h2rgb(m1, m2, h):
+    if h<0:
+        h = h+1
+    if h>1:
+        h = h-1
+    if h*6<1:
+       return m1+(m2-m1)*h*6
+    if h*2<1:
+       return m2
+    if h*3<2:
+       return m1+(m2-m1)*(2/3-h)*6
+    else:
+       return m1
+
+def hsl_to_rgb(h, s, L):
+    h = h/360
+    if L<=0.5:
+        m2 = L*(s+1)
+    else:
+      m2 = L+s-L*s
+    
+    m1 = L*2-m2
+    
+    red =   h2rgb(m1, m2, h+1/3), 
+    green = h2rgb(m1, m2, h), 
+    blue =  h2rgb(m1, m2, h-1/3)
+    print(red, green, blue)
 
 def main():
     if dev_type == "app":
         list_applications()
     else:
         list_sinks_sources()
-
+    
+    print(UIString, end='')
 if __name__ == '__main__':
     main()
 

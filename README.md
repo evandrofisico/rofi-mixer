@@ -3,7 +3,7 @@
 Rofi-mixer allows you to manage your speakers, apps and microphones on systems with
 pulse audio (or pipewire with the pulse audio capabilities).
 
-![rice-f009082](https://raw.githubusercontent.com//evandrofisico/rofi-mixer/blob/master/images/screenshot.png)
+![rice-f009082](https://raw.githubusercontent.com//evandrofisico/rofi-mixer/master/images/screenshot.png)
 
 ## Usage
 

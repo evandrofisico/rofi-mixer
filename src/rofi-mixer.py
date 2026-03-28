@@ -159,10 +159,14 @@ def create_volume_bar(volume_percent):
 
     empty = ""
     filled= ""
+
+    barcolour = hsl_to_rgb( (66-0.66*volume_value) , 1.0, 0.49)
     
-    bar = "<span foreground='red'>" + filled * overflowed_segments + "</span>" + filled * filled_segments + empty * (bar_length - filled_segments - overflowed_segments)
+    #bar = "<span foreground='red'>" + filled * overflowed_segments + "</span>" + filled * filled_segments + empty * (bar_length - filled_segments - overflowed_segments)
+    bar = "<span foreground='"+barcolour+"'>"+fblock + filled * filled_segments + empty * (bar_length - filled_segments - overflowed_segments) + lblock +'</span>'
     
-    return f"{fblock}{bar}{lblock} {volume_value}%"
+    #return f"{fblock}{bar}{lblock} {volume_value}%"
+    return f"{bar} {volume_value}%"
 
 def list_sinks_sources():
     global UIString
@@ -344,10 +348,11 @@ def hsl_to_rgb(h, s, L):
     
     m1 = L*2-m2
     
-    red =   h2rgb(m1, m2, h+1/3), 
-    green = h2rgb(m1, m2, h), 
+    red =   h2rgb(m1, m2, h+1/3)
+    green = h2rgb(m1, m2, h)
     blue =  h2rgb(m1, m2, h-1/3)
-    print(red, green, blue)
+    hexnumber = ( round(255*red), round(255*green),round(255*blue))
+    return '#%02x%02x%02x' % hexnumber
 
 def main():
     if dev_type == "app":

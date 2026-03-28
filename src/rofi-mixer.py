@@ -217,7 +217,11 @@ def list_sinks_sources():
 
             dev_icon = " "
             if dev_type == "source":
-                dev_icon = ""
+                if def_device == get_device_from_desc(last_device_match):
+                    dev_icon = "󰍬"
+                else:
+                    dev_icon = "󰍭"
+
             if dev_type == "sink":
                 dev_icon = "󰓃"
                 
